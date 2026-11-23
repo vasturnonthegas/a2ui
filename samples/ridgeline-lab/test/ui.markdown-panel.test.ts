@@ -35,7 +35,10 @@ function render(markdown: string): string {
 /** Text content of every element with the given tag, in document order. */
 function cellsOf(html: string, tag: 'th' | 'td'): string[] {
   const pattern = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, 'g');
-  return [...html.matchAll(pattern)].map(([, inner]) => inner.replace(/<[^>]+>/g, '').trim());
+  return [...html.matchAll(pattern)].map(([, inner]) => {
+    assert.ok(inner !== undefined, `<${tag}> match has a content capture`);
+    return inner.replace(/<[^>]+>/g, '').trim();
+  });
 }
 
 describe('MarkdownPanel', () => {
