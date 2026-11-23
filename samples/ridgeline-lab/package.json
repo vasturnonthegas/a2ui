@@ -1,0 +1,49 @@
+{
+  "name": "ridgeline-lab",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Synthetic local demo comparing A2UI v1.0 Basic catalog surfaces with Markdown for the same prompt and fixture.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts --prod",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts",
+    "eval": "tsx src/eval.ts",
+    "lint": "echo \"Workspace has no lint configuration.\"",
+    "lint:fix": "echo \"Workspace has no lint configuration.\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@a2ui/markdown-it": "0.2.2",
+    "@a2ui/react": "0.14.0",
+    "@a2ui/web_core": "0.14.0",
+    "@astryxdesign/core": "0.7.17",
+    "@stylexjs/stylex": "0.19.2",
+    "@typesafe-ai/sdk": "0.5.7",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@astryxdesign/cli": "0.7.17",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "prettier": "3.10.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vite": "8.3.8"
+  }
+}
