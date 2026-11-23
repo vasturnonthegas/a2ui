@@ -151,6 +151,29 @@ describe('runChecks', () => {
     assert.equal(found(['Change order: 3,850.00'], '$3,850.00'), false);
   });
 
+  it('matches Markdown facts against the text the panel shows, not its markup', () => {
+    const trace = (lines: string[], value: string) => check(lines, {facts: {value}}).facts[0];
+
+    // Separately emphasized words read as one visible phrase.
+    assert.deepEqual(trace(['- **Roof** *sheathing* delivered'], 'Roof sheathing'), {
+      key: 'value',
+      expected: 'Roof sheathing',
+      found: true,
+      lines: [1],
+      components: ['c0'],
+      conflicting: [],
+    });
+    assert.equal(trace(['_Roof_ __sheathing__'], 'Roof sheathing')?.found, true);
+    assert.equal(trace(['~~Roof~~ `sheathing`'], 'Roof sheathing')?.found, true);
+    assert.equal(trace(['Crew on site: **9**'], '9')?.found, true);
+    assert.equal(trace(['Due **Dec 4**, 2026'], '2026-12-04')?.found, true);
+
+    // Escaped punctuation is literal text, not emphasis.
+    assert.equal(trace(['Roof \\*sheathing\\*'], 'Roof sheathing')?.found, false);
+    assert.equal(trace(['Roof \\*sheathing\\*'], 'Roof *sheathing*')?.found, true);
+    assert.equal(trace(['Tom & Jerry\'s "A<B"'], 'Tom & Jerry\'s "A<B"')?.found, true);
+  });
+
   it('fails empty output', () => {
     const {ok, detail} = check([], {facts: {}});
     assert.equal(ok('non-empty'), false);

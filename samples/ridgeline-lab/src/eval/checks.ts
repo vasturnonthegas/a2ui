@@ -8,6 +8,11 @@
  * reported.
  */
 
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 import type {CheckResult, FactTrace, Variant} from './types.ts';
 
 export interface EvidenceLineLike {
@@ -229,6 +234,34 @@ function lineHasNumber(line: string, expected: string): boolean {
   return new RegExp(`(?<![\\d.])${escapeRegExp(needle)}(?!\\d|\\.\\d)`).test(haystack);
 }
 
+/** The five characters React escapes in rendered text. */
+const HTML_TEXT_ESCAPES: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#x27;': "'",
+};
+
+/**
+ * The text a Markdown evidence line shows in the lab's Markdown panel. It runs the panel's
+ * own parser (react-markdown with remark-gfm and raw HTML skipped) and unwraps every
+ * element, so emphasis, strikethrough, and code spans read as their text: `**Roof**
+ * *sheathing*` shows `Roof sheathing`. A backslash escape stays literal punctuation, so
+ * `Roof \*sheathing\*` shows `Roof *sheathing*`. Leading indentation is dropped first so a
+ * nested list item is not read as an indented code block.
+ */
+function visibleMarkdownLine(line: string): string {
+  const html = renderToStaticMarkup(
+    createElement(
+      Markdown,
+      {remarkPlugins: [remarkGfm], skipHtml: true, allowedElements: [], unwrapDisallowed: true},
+      line.trimStart(),
+    ),
+  );
+  return html.replace(/&(?:amp|lt|gt|quot|#x27);/g, entity => HTML_TEXT_ESCAPES[entity] ?? entity);
+}
+
 function lineHasValue(line: string, expected: string): boolean {
   if (NUMERIC_VALUE.test(expected.trim())) return lineHasNumber(line, expected);
   const haystack = normalize(line);
@@ -343,9 +376,15 @@ export function runChecks(input: CheckInput): CheckOutput {
     ),
   );
 
+  // Markdown evidence keeps its markup, so facts are matched against what each line shows.
+  // The evidence itself is unchanged; only this comparison reads through the markup.
+  const factLines =
+    input.variant === 'markdown'
+      ? input.lines.map(line => ({...line, text: visibleMarkdownLine(line.text)}))
+      : input.lines;
   const factValues = new Set(Object.values(input.facts).map(value => value.trim()));
   const facts = Object.entries(input.facts).map(([key, expected]) =>
-    traceFact(key, expected, input.lines, factValues),
+    traceFact(key, expected, factLines, factValues),
   );
   checks.push(
     result(
