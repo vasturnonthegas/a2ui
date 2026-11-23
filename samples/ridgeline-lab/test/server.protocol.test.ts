@@ -171,6 +171,72 @@ describe('validateMessages', () => {
     );
   });
 
+  it('requires editable action context to come from the bound input controls', () => {
+    const logForm = (context: Record<string, unknown>): Component[] => [
+      {id: 'root', component: 'Column', children: ['date', 'notes', 'shown', 'go']},
+      {id: 'date', component: 'DateTimeInput', label: 'Date', value: {'@path': '/log/date'}},
+      {id: 'notes', component: 'TextField', label: 'Notes', value: {'@path': '/log/notes'}},
+      {id: 'shown', component: 'Text', text: {'@path': '/log/summary'}},
+      {
+        id: 'go',
+        component: 'Button',
+        child: 'goLabel',
+        action: {event: {name: 'draftDailyLog', context}},
+      },
+      {id: 'goLabel', component: 'Text', text: 'Draft'},
+    ];
+    const dataModel = {log: {date: '2026-11-23', notes: 'Snow.', summary: 'Snow day'}};
+    const options = {allowedActions: ['draftDailyLog']};
+    assert.deepEqual(
+      validateMessages(
+        surface(logForm({logDate: {'@path': '/log/date'}, notes: {'@path': '/log/notes'}}), {
+          dataModel,
+        }),
+        options,
+      ),
+      [],
+    );
+    // A literal would submit a fixed string instead of the user's edit.
+    expectError(
+      surface(logForm({logDate: '2026-11-23', notes: {'@path': '/log/notes'}}), {dataModel}),
+      /context\.logDate must be a data binding to the input that edits it/,
+      options,
+    );
+    // Data the user can see but not edit is not an input binding.
+    expectError(
+      surface(logForm({logDate: {'@path': '/log/date'}, notes: {'@path': '/log/summary'}}), {
+        dataModel,
+      }),
+      /context\.notes binds \/log\/summary, which no input component edits/,
+      options,
+    );
+    // Two fields bound to one control would send the same edit twice.
+    expectError(
+      surface(logForm({logDate: {'@path': '/log/date'}, notes: {'@path': '/log/date'}}), {
+        dataModel,
+      }),
+      /binds \/log\/date, which is already bound to "logDate"/,
+      options,
+    );
+    // The check runs on the final surface, so a later updateComponents is covered too.
+    expectError(
+      [
+        ...surface(logForm({logDate: {'@path': '/log/date'}, notes: {'@path': '/log/notes'}}), {
+          dataModel,
+        }),
+        {
+          version: '1.0',
+          updateComponents: {
+            surfaceId: 's',
+            components: [{id: 'notes', component: 'Text', text: {'@path': '/log/notes'}}],
+          },
+        },
+      ],
+      /context\.notes binds \/log\/notes, which no input component edits/,
+      options,
+    );
+  });
+
   it('checks component graph and data binding integrity', () => {
     expectError(
       surface([{id: 'main', component: 'Text', text: 'x'}]),

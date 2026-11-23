@@ -448,11 +448,52 @@ function checkAction(
       `${where}.event.context must have exactly the keys ${expected.join(', ')}; got ${keys.join(', ') || 'none'}`,
     );
   }
+  // Every allowlisted context key is a user-editable field, so a literal would send a fixed
+  // value instead of the user's edit. Confirm and cancel are host routes, not surface events.
   for (const [key, value] of Object.entries(context)) {
-    const isBinding =
-      isRecord(value) && typeof value['@path'] === 'string' && Object.keys(value).length === 1;
-    if (!isBinding && typeof value !== 'string') {
-      sink.add(`${where}.event.context.${key} must be a data binding or a literal string`);
+    if (contextBinding(value) === undefined) {
+      sink.add(`${where}.event.context.${key} must be a data binding to the input that edits it`);
+    }
+  }
+}
+
+/** The `@path` of a context value that is exactly a data binding. */
+function contextBinding(value: unknown): string | undefined {
+  return isRecord(value) && typeof value['@path'] === 'string' && Object.keys(value).length === 1
+    ? value['@path']
+    : undefined;
+}
+
+/**
+ * Checks that each allowlisted event's context binds to a distinct input `value` binding, so
+ * the emitted values are the ones the user edited. Runs once all components are applied.
+ */
+function checkActionBindings(
+  at: string,
+  components: Map<string, Json>,
+  inputPaths: ReadonlySet<string>,
+  sink: ErrorSink,
+): void {
+  for (const [id, component] of components) {
+    for (const ref of COMPONENT_META.get(String(component.component))?.refs ?? []) {
+      if (ref.kind !== 'action') continue;
+      const action = component[ref.prop];
+      const event = isRecord(action) ? action.event : undefined;
+      if (!isRecord(event) || !ACTION_SPECS.has(String(event.name))) continue;
+      if (!isRecord(event.context)) continue;
+      const boundBy = new Map<string, string>();
+      for (const [key, value] of Object.entries(event.context)) {
+        const path = contextBinding(value);
+        if (path === undefined) continue;
+        const where = `${at}: component "${id}".${ref.prop}.event.context.${key}`;
+        if (!inputPaths.has(path)) {
+          sink.add(`${where} binds ${path}, which no input component edits`);
+        } else if (boundBy.has(path)) {
+          sink.add(`${where} binds ${path}, which is already bound to "${boundBy.get(path)}"`);
+        } else {
+          boundBy.set(path, key);
+        }
+      }
     }
   }
 }
@@ -547,6 +588,12 @@ function checkSurfaceIntegrity(surfaceId: string, surface: SurfaceState, sink: E
       if (isRecord(value) && typeof value['@path'] === 'string') writable.add(value['@path']);
     }
   }
+  checkActionBindings(
+    at,
+    components,
+    new Set([...writable].filter(path => path.startsWith('/'))),
+    sink,
+  );
   for (const [id, component] of components) {
     for (const path of collectBindings(component)) {
       if (path.startsWith('/')) {
