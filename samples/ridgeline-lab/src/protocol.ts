@@ -235,6 +235,11 @@ function decodePointer(pointer: string): string[] {
     .map(segment => segment.replace(/~1/g, '/').replace(/~0/g, '~'));
 }
 
+/** Returns the first reserved segment in a pointer, which must never be traversed or written. */
+function reservedPointerSegment(pointer: string): string | undefined {
+  return decodePointer(pointer).find(segment => FORBIDDEN_KEYS.has(segment));
+}
+
 function lookup(root: unknown, pointer: string): {found: boolean; value: unknown} {
   let current: unknown = root;
   for (const segment of decodePointer(pointer)) {
@@ -253,14 +258,25 @@ function lookup(root: unknown, pointer: string): {found: boolean; value: unknown
   return {found: true, value: current};
 }
 
+/**
+ * Writes `value` at `pointer` in a copy of `root`. Callers must reject reserved segments
+ * first; as a second line of defense this refuses them and follows only own properties.
+ */
 function setPointer(root: Json, pointer: string, value: unknown): Json {
   const segments = decodePointer(pointer);
+  if (segments.some(segment => FORBIDDEN_KEYS.has(segment))) return root;
   if (segments.length === 0) return isRecord(value) ? structuredClone(value) : {};
   const next = structuredClone(root);
   let current: Json = next;
   for (const segment of segments.slice(0, -1)) {
-    if (!isRecord(current[segment])) current[segment] = {};
-    current = current[segment] as Json;
+    const child = Object.hasOwn(current, segment) ? current[segment] : undefined;
+    if (isRecord(child)) {
+      current = child;
+    } else {
+      const created: Json = {};
+      current[segment] = created;
+      current = created;
+    }
   }
   const last = segments[segments.length - 1] as string;
   if (value === null) delete current[last];
@@ -631,6 +647,11 @@ export function validateMessages(messages: unknown, options: ValidateOptions = {
       const path = typeof body.path === 'string' ? body.path : '/';
       if (!POINTER_PATTERN.test(path)) {
         sink.add(`${at}.path "${path}" is not a JSON Pointer`);
+        return;
+      }
+      const reserved = reservedPointerSegment(path);
+      if (reserved !== undefined) {
+        sink.add(`${at}.path "${path}" uses the reserved key "${reserved}"`);
         return;
       }
       checkValueTree(body.value, `${at}.value`, sink);

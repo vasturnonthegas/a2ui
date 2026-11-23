@@ -237,6 +237,23 @@ describe('validateMessages', () => {
     const parsed = JSON.parse('{"__proto__": {"x": 1}}') as Record<string, unknown>;
     expectError(surface(okTree, {dataModel: parsed}), /reserved key "__proto__"/);
   });
+
+  it('rejects reserved updateDataModel path segments without applying them', () => {
+    const marker = 'ridgelineReservedPathMarker';
+    for (const path of [
+      `/__proto__/${marker}`,
+      `/constructor/prototype/${marker}`,
+      `/items/__proto__`,
+    ]) {
+      const messages = [
+        ...surface(okTree, {dataModel: {}}),
+        {version: '1.0', updateDataModel: {surfaceId: 's', path, value: 'x'}},
+      ];
+      expectError(messages, /reserved key "(__proto__|constructor)"/);
+      assert.equal(Object.hasOwn(Object.prototype, marker), false, path);
+      assert.equal(({} as Record<string, unknown>)[marker], undefined, path);
+    }
+  });
 });
 
 describe('validateMarkdown', () => {
