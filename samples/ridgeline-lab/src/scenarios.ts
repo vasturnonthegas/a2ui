@@ -183,6 +183,7 @@ const rfiTriage: Scenario = {
     upcoming2Due: '2026-11-30',
     closedId: 'RFI-029',
     closedSubject: 'Basement egress window well size',
+    closedDue: '2026-11-14',
   },
   rubric: {
     id: 'ridgeline-rfi-triage-v1',
@@ -229,7 +230,10 @@ const rfiTriage: Scenario = {
         card('closedCard', 'closedCol'),
         column('closedCol', ['closedTitle', 'rfi029']),
         text('closedTitle', '### Closed (1)'),
-        text('rfi029', '**RFI-029** Basement egress window well size. Answered 2026-11-13, closed'),
+        text(
+          'rfi029',
+          '**RFI-029** Basement egress window well size. Summit Framing, due 2026-11-14, answered 2026-11-13, closed',
+        ),
       ]),
     ],
     markdown: [
@@ -249,7 +253,7 @@ const rfiTriage: Scenario = {
       '',
       '### Closed (1)',
       '',
-      '- **RFI-029** Basement egress window well size. Answered 2026-11-13, closed',
+      '- **RFI-029** Basement egress window well size. Summit Framing, due 2026-11-14, answered 2026-11-13, closed',
       '',
     ].join('\n'),
   },

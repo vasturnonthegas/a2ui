@@ -5,7 +5,7 @@
       "scenarioId": "rfi-triage",
       "variant": "a2ui",
       "rubric_sha256": "8c4dfdfea1de606f23c1b77e9837fcefc6a97228101f22acfa7f89c2e37729ca",
-      "evidence_sha256": "6b83fcdbe88f0b3431086da22b0bb38f26b7d293946b868b5377033c98d03e9c",
+      "evidence_sha256": "8a2b44f6ddc80b6791ae8c4e0a1f7ca94f12fa9d2144277a56b8c3dbb204ea07",
       "answers": {
         "overdue031": 0.95,
         "overdue034": 0.95,
@@ -20,7 +20,7 @@
       "scenarioId": "rfi-triage",
       "variant": "markdown",
       "rubric_sha256": "8c4dfdfea1de606f23c1b77e9837fcefc6a97228101f22acfa7f89c2e37729ca",
-      "evidence_sha256": "aee1600d2d2fb25b280e165fe038eeeb4b977c064857dd4d97c9c9e5a85aa3c3",
+      "evidence_sha256": "78f216baaa94b864b2647d90433647ef97cdc4be610ec308e1bd2b63565cafd2",
       "answers": {
         "overdue031": 0.95,
         "overdue034": 0.95,
