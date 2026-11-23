@@ -113,6 +113,36 @@ describe('renderEvidence', () => {
     assert.equal(evidence.text.includes('Sealant type'), false);
   });
 
+  it('keeps array indexes after a deletion, as the renderer does', () => {
+    const remove = (path: string) => ({
+      version: '1.0',
+      updateDataModel: {surfaceId: 'main', path, value: null},
+    });
+    const evidence = renderEvidence([
+      surface(
+        [
+          {id: 'root', component: 'Column', children: ['lead', 'second', 'roster']},
+          {id: 'lead', component: 'Text', text: {'@path': '/crew/2/name'}},
+          {id: 'second', component: 'Text', text: {'@path': '/crew/1/name'}},
+          {id: 'roster', component: 'List', children: {path: '/crew', componentId: 'member'}},
+          {id: 'member', component: 'Text', text: {'@path': 'name'}},
+        ],
+        {crew: [{name: 'Ana'}, {name: 'Ben'}, {name: 'Theo'}]},
+      ),
+      remove('/crew/0'),
+      // Past the end: must not grow the list with empty entries.
+      remove('/crew/7'),
+    ]);
+    assert.deepEqual(
+      evidence.lines.map(line => line.text),
+      ['  Theo', '  Ben', '    Ben', '    Theo'],
+    );
+    // The emptied slot still renders as a template item, with nothing to show.
+    assert.deepEqual(evidence.diagnostics, [
+      'surface main/member.text: binding resolved to no value',
+    ]);
+  });
+
   it('puts side-by-side Row children on one line', () => {
     const evidence = renderEvidence([
       surface([

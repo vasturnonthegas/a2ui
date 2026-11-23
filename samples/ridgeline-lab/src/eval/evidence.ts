@@ -76,7 +76,13 @@ function getPointer(root: unknown, pointer: string): unknown {
   return current;
 }
 
-/** Applies an `updateDataModel` write; a `null` value deletes the key or array item. */
+/**
+ * Applies an `updateDataModel` write; a `null` value deletes the key or array item.
+ *
+ * Like web_core's `DataModel.set`, deleting an array item empties its slot instead of
+ * shifting later items down, so an indexed binding such as `/crew/2/name` keeps showing the
+ * same item. Deleting past the end of an array changes nothing.
+ */
 function setPointer(root: unknown, pointer: string, value: unknown): unknown {
   const segments = decodePointer(pointer);
   if (segments.length === 0) return value === null ? {} : structuredClone(value);
@@ -87,8 +93,10 @@ function setPointer(root: unknown, pointer: string, value: unknown): unknown {
     const arrayIndex = Array.isArray(current) && /^\d+$/.test(segment) ? Number(segment) : -1;
     if (index === segments.length - 1) {
       if (value !== null) target[segment] = structuredClone(value);
-      else if (arrayIndex >= 0) (current as unknown[]).splice(arrayIndex, 1);
-      else delete target[segment];
+      else if (arrayIndex >= 0) {
+        const items = current as unknown[];
+        if (arrayIndex < items.length) items[arrayIndex] = undefined;
+      } else delete target[segment];
       break;
     }
     const next = target[segment];
