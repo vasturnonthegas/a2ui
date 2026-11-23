@@ -1,5 +1,6 @@
 /**
- * Renders the Markdown variant of a generation with react-markdown.
+ * Renders the Markdown variant of a generation with react-markdown and
+ * remark-gfm, so GFM tables render as table rows and cells.
  *
  * Raw HTML is skipped, images are never fetched (their alt text is shown
  * instead), and links render as plain text with the target written out, so
@@ -12,9 +13,18 @@ import {Divider} from '@astryxdesign/core/Divider';
 import {Heading} from '@astryxdesign/core/Heading';
 import {List, ListItem} from '@astryxdesign/core/List';
 import {VStack} from '@astryxdesign/core/Stack';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from '@astryxdesign/core/Table';
 import {Text} from '@astryxdesign/core/Text';
 import {Children, isValidElement, type ReactNode} from 'react';
 import Markdown, {type Components} from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // The panel title is an h2, so Markdown headings start one level below it.
 function headingOf(level: 3 | 4 | 5) {
@@ -23,8 +33,11 @@ function headingOf(level: 3 | 4 | 5) {
   };
 }
 
-/** react-markdown puts newline text between list items; List expects only items. */
-function listItems(children: ReactNode): ReactNode[] {
+/**
+ * react-markdown puts newline text between list items and table parts; List
+ * and the Table parts expect only elements.
+ */
+function elementsOf(children: ReactNode): ReactNode[] {
   return Children.toArray(children).filter(child => isValidElement(child));
 }
 
@@ -45,14 +58,14 @@ const components: Components = {
   ul({children}) {
     return (
       <List listStyle="disc" density="compact">
-        {listItems(children)}
+        {elementsOf(children)}
       </List>
     );
   },
   ol({children, start}) {
     return (
       <List listStyle="decimal" density="compact" start={start ?? 1}>
-        {listItems(children)}
+        {elementsOf(children)}
       </List>
     );
   },
@@ -90,12 +103,40 @@ const components: Components = {
   code({children}) {
     return <Text type="code">{children}</Text>;
   },
+  // GFM tables (for example meeting action items) render as real rows and cells.
+  table({children}) {
+    return (
+      <Table density="compact" dividers="grid">
+        {elementsOf(children)}
+      </Table>
+    );
+  },
+  thead({children}) {
+    return <TableHeader>{elementsOf(children)}</TableHeader>;
+  },
+  tbody({children}) {
+    return <TableBody>{elementsOf(children)}</TableBody>;
+  },
+  tr({children}) {
+    return <TableRow>{elementsOf(children)}</TableRow>;
+  },
+  // `style` carries the column alignment from the delimiter row.
+  th({children, style}) {
+    return (
+      <TableHeaderCell scope="col" style={style}>
+        {children}
+      </TableHeaderCell>
+    );
+  },
+  td({children, style}) {
+    return <TableCell style={style}>{children}</TableCell>;
+  },
 };
 
 export function MarkdownPanel({markdown}: {markdown: string}) {
   return (
     <VStack gap={3}>
-      <Markdown skipHtml components={components}>
+      <Markdown skipHtml remarkPlugins={[remarkGfm]} components={components}>
         {markdown}
       </Markdown>
     </VStack>
