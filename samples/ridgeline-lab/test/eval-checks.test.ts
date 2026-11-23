@@ -1,0 +1,164 @@
+import assert from 'node:assert/strict';
+import {describe, it} from 'node:test';
+
+import {extractDates, extractIds, knownValues, runChecks} from '../src/eval/checks.ts';
+import type {CheckInput} from '../src/eval/checks.ts';
+
+const FACTS = {rfiId: 'RFI-0142', dueDate: '2026-12-04'};
+const known = knownValues({
+  fixture: {
+    rfi: {id: 'RFI-0142', due: '2026-12-04', spec: 'ISO-9001'},
+    related: ['SUB-0031'],
+    note: 'Walk the site the week of December 1st.',
+  },
+  facts: FACTS,
+  prompt: 'Triage the open RFI.',
+});
+
+function check(lines: string[], overrides: Partial<CheckInput> = {}) {
+  const output = runChecks({
+    variant: 'markdown',
+    lines: lines.map((text, index) => ({text, componentId: `c${index}`})),
+    facts: FACTS,
+    known,
+    ...overrides,
+  });
+  const byId = new Map(output.checks.map(result => [result.id, result]));
+  const detail = (id: string) => byId.get(id)?.detail;
+  const ok = (id: string) => byId.get(id)?.ok;
+  return {...output, byId, detail, ok};
+}
+
+describe('extractors', () => {
+  it('finds record IDs, including multi-segment ones, and skips standards prefixes', () => {
+    assert.deepEqual(extractIds('RFI-0142, PL-118-B, SRC-ADR-0042, ISO-9001, UTC-05, rfi-1'), [
+      'RFI-0142',
+      'PL-118-B',
+      'SRC-ADR-0042',
+    ]);
+  });
+
+  it('normalizes dated text that names a year and marks impossible dates', () => {
+    const text = '2026-12-04, Dec 4, 2026, 4 December 2026, 12/04/2026, 2026-02-30';
+    assert.deepEqual(
+      extractDates(text).map(token => token.iso),
+      ['2026-12-04', null, '2026-12-04', '2026-12-04', '2026-12-04'],
+    );
+  });
+
+  it('treats a year-less fixture date as known for the years the fixture names', () => {
+    assert.equal(known.dates.has('2026-12-01'), true);
+    assert.equal(known.dates.has('2027-12-01'), false);
+  });
+});
+
+describe('runChecks', () => {
+  it('passes output whose IDs, dates, and facts all trace to the fixture', () => {
+    const {checks, facts} = check(['RFI-0142: anchor spacing', 'Due Dec 4, 2026, walk 2026-12-01']);
+    assert.deepEqual(
+      checks.filter(result => !result.ok),
+      [],
+    );
+    assert.deepEqual(facts, [
+      {
+        key: 'rfiId',
+        expected: 'RFI-0142',
+        found: true,
+        lines: [1],
+        components: ['c0'],
+        conflicting: [],
+      },
+      {
+        key: 'dueDate',
+        expected: '2026-12-04',
+        found: true,
+        lines: [2],
+        components: ['c1'],
+        conflicting: [],
+      },
+    ]);
+  });
+
+  it('flags record IDs that are not in the fixture', () => {
+    const {ok, detail} = check(['RFI-0142 and RFI-0143', 'Due 2026-12-04', 'Owner SUB-0031']);
+    assert.equal(ok('no-fabricated-ids'), false);
+    assert.equal(detail('no-fabricated-ids'), 'RFI-0143 is not in the scenario fixture');
+  });
+
+  it('flags impossible dates and dates that are not in the fixture', () => {
+    const {ok, detail} = check([
+      'RFI-0142',
+      'Due 2026-12-04',
+      'Inspected 2026-02-30',
+      'Next visit Dec 9, 2026',
+    ]);
+    assert.equal(ok('dates-valid'), false);
+    assert.equal(detail('dates-valid'), '2026-02-30 is not a real calendar date');
+    assert.equal(ok('no-fabricated-dates'), false);
+    assert.equal(detail('no-fabricated-dates'), 'Dec 9, 2026 is not in the scenario fixture');
+  });
+
+  it('reports a labeled field that shows a different date than the fixture', () => {
+    const {ok, detail, facts} = check(['RFI-0142', 'Due date', 'Dec 5, 2026']);
+    assert.equal(ok('facts-present'), false);
+    assert.equal(ok('record-field-mismatch'), false);
+    assert.equal(
+      detail('record-field-mismatch'),
+      'dueDate: expected "2026-12-04", shows "Dec 5, 2026"',
+    );
+    assert.deepEqual(facts[1]?.conflicting, ['Dec 5, 2026']);
+  });
+
+  it('reports a same-type ID shown in place of the expected one', () => {
+    const {ok, detail} = check(['RFI-0143', 'Due 2026-12-04'], {
+      known: {ids: new Set(['RFI-0142', 'RFI-0143']), dates: known.dates},
+    });
+    assert.equal(detail('record-field-mismatch'), 'rfiId: expected "RFI-0142", shows "RFI-0143"');
+    assert.equal(ok('no-fabricated-ids'), true);
+  });
+
+  it('does not call another expected record a mismatch', () => {
+    const {ok, detail} = check(['RFI-0150', 'Due 2026-12-04'], {
+      facts: {...FACTS, otherId: 'RFI-0150'},
+      known: {ids: new Set(['RFI-0142', 'RFI-0150']), dates: known.dates},
+    });
+    assert.equal(ok('facts-present'), false);
+    assert.equal(ok('record-field-mismatch'), true);
+    assert.equal(detail('facts-present'), 'rfiId "RFI-0142" not visible');
+  });
+
+  it('fails empty output', () => {
+    const {ok, detail} = check([], {facts: {}});
+    assert.equal(ok('non-empty'), false);
+    assert.equal(detail('non-empty'), 'no visible text');
+  });
+
+  it('reports a missing output as one failure without checking content', () => {
+    const {checks} = check(['ignored'], {generationError: 'Error: model timed out'});
+    assert.deepEqual(checks, [
+      {
+        id: 'output-present',
+        ok: false,
+        severity: 'error',
+        detail: 'no output: Error: model timed out',
+      },
+    ]);
+  });
+
+  it('adds message, render, and reachability checks for the A2UI variant', () => {
+    const {ok, byId} = check(['RFI-0142', 'Due 2026-12-04'], {
+      variant: 'a2ui',
+      messageErrors: ['messages[0]: missing version'],
+      renderDiagnostics: ['surface main: no root component'],
+      unreachable: {main: ['orphan']},
+    });
+    assert.equal(ok('messages-valid'), false);
+    assert.equal(ok('render-clean'), false);
+    assert.deepEqual(byId.get('no-unreachable-components'), {
+      id: 'no-unreachable-components',
+      ok: false,
+      severity: 'warning',
+      detail: '1 unreachable component(s): orphan',
+    });
+  });
+});

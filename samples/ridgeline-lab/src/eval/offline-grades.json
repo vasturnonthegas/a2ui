@@ -1,0 +1,192 @@
+{
+  "about": "Hand-authored canned grades for the recorded stub outputs. They are not model output and were written by reading the evidence text. A grade applies only when the run's evidence_sha256 and rubric_sha256 match exactly; otherwise the report shows NO_FIXTURE or FIXTURE_STALE instead of a grade. Questions the visible evidence cannot settle (support from sources the user cannot see, fidelity to a transcript the user cannot see) carry p = 0.6 so they report as UNPROVEN and untrusted.",
+  "grades": [
+    {
+      "scenarioId": "rfi-triage",
+      "variant": "a2ui",
+      "rubric_sha256": "8c4dfdfea1de606f23c1b77e9837fcefc6a97228101f22acfa7f89c2e37729ca",
+      "evidence_sha256": "6b83fcdbe88f0b3431086da22b0bb38f26b7d293946b868b5377033c98d03e9c",
+      "answers": {
+        "overdue031": 0.95,
+        "overdue034": 0.95,
+        "upcoming036": 0.95,
+        "upcoming037": 0.95,
+        "closed029": 0.95,
+        "dueDates": 0.95,
+        "noInvented": 0.95
+      }
+    },
+    {
+      "scenarioId": "rfi-triage",
+      "variant": "markdown",
+      "rubric_sha256": "8c4dfdfea1de606f23c1b77e9837fcefc6a97228101f22acfa7f89c2e37729ca",
+      "evidence_sha256": "aee1600d2d2fb25b280e165fe038eeeb4b977c064857dd4d97c9c9e5a85aa3c3",
+      "answers": {
+        "overdue031": 0.95,
+        "overdue034": 0.95,
+        "upcoming036": 0.95,
+        "upcoming037": 0.95,
+        "closed029": 0.95,
+        "dueDates": 0.95,
+        "noInvented": 0.95
+      }
+    },
+    {
+      "scenarioId": "project-brief",
+      "variant": "a2ui",
+      "rubric_sha256": "5e9b9b916e98639d1201276016c34a852175e2ddf5a490f7e4afba42385fa939",
+      "evidence_sha256": "cbd7eb0fb76534f2a83a74a73d7c59df78e707138d3926f7fd2f236930c9ed8e",
+      "answers": {
+        "targetDate": 0.95,
+        "delayedWindows": 0.95,
+        "roofInProgress": 0.95,
+        "latestLog": 0.95,
+        "overdueRfis": 0.95,
+        "changeOrder": 0.95,
+        "noInventedTasks": 0.95
+      }
+    },
+    {
+      "scenarioId": "project-brief",
+      "variant": "markdown",
+      "rubric_sha256": "5e9b9b916e98639d1201276016c34a852175e2ddf5a490f7e4afba42385fa939",
+      "evidence_sha256": "cced18ac51c0c4bbd4a29b7d68d387fdce8c3b196a5752d496cec5407a1a2a76",
+      "answers": {
+        "targetDate": 0.95,
+        "delayedWindows": 0.95,
+        "roofInProgress": 0.95,
+        "latestLog": 0.95,
+        "overdueRfis": 0.95,
+        "changeOrder": 0.95,
+        "noInventedTasks": 0.95
+      }
+    },
+    {
+      "scenarioId": "punch-proposal",
+      "variant": "a2ui",
+      "rubric_sha256": "a5a3e231a925151d0560805348a9aad3da6067b6524cbe2022503369bf5b8a6a",
+      "evidence_sha256": "31aa5816466bbaae44d60f771bae269a5c262278c9a532843d573fc5ec6d1de1",
+      "answers": {
+        "titleEditable": 0.95,
+        "descriptionEditable": 0.95,
+        "prioritySelectable": 0.95,
+        "prefilledTitle": 0.95,
+        "neededBy": 0.95,
+        "submitControl": 0.95,
+        "notSaved": 0.9
+      }
+    },
+    {
+      "scenarioId": "punch-proposal",
+      "variant": "markdown",
+      "rubric_sha256": "a5a3e231a925151d0560805348a9aad3da6067b6524cbe2022503369bf5b8a6a",
+      "evidence_sha256": "ebd6e12f490f6619885a2b4fac8aee3e79f4e481eabee029980ee5b2cf8277a7",
+      "note": "Markdown names the fields and the button but renders no editable input or control.",
+      "answers": {
+        "titleEditable": 0.1,
+        "descriptionEditable": 0.1,
+        "prioritySelectable": 0.1,
+        "prefilledTitle": 0.95,
+        "neededBy": 0.95,
+        "submitControl": 0.1,
+        "notSaved": 0.95
+      }
+    },
+    {
+      "scenarioId": "daily-log",
+      "variant": "a2ui",
+      "rubric_sha256": "4fbded022ecf8fa81442a826193cc3d33d5e6615ee187be039c513e2d4e53786",
+      "evidence_sha256": "c17648d5bf75c7d581d64385bc24b4f4f2349921dd19d306cc9ae00c0b8657a6",
+      "note": "No line is joined with \" | \", so nothing renders side by side.",
+      "answers": {
+        "dateEditable": 0.95,
+        "notesEditable": 0.95,
+        "dateValue": 0.95,
+        "crew": 0.95,
+        "weatherDelay": 0.95,
+        "windowDelivery": 0.95,
+        "singleColumn": 0.85
+      }
+    },
+    {
+      "scenarioId": "daily-log",
+      "variant": "markdown",
+      "rubric_sha256": "4fbded022ecf8fa81442a826193cc3d33d5e6615ee187be039c513e2d4e53786",
+      "evidence_sha256": "018fb7d287eb360fae6163d31639f5c3631ad7a7b8fd3080a4d5ec5e7c4ec0f6",
+      "note": "Markdown shows the date and notes as text only; nothing is editable.",
+      "answers": {
+        "dateEditable": 0.1,
+        "notesEditable": 0.1,
+        "dateValue": 0.95,
+        "crew": 0.95,
+        "weatherDelay": 0.95,
+        "windowDelivery": 0.95,
+        "singleColumn": 0.85
+      }
+    },
+    {
+      "scenarioId": "decision-card",
+      "variant": "a2ui",
+      "rubric_sha256": "3f7c7955c7e88a074f374889027b8897f51e0a8379b17a03a85f6a55b5fa2c93",
+      "evidence_sha256": "6c8a75b74e2bf282afe0b5e33e03c9e8c78cb321aa3a526541e361e3bacffc56",
+      "note": "Source excerpts are not visible, so support for each claim cannot be confirmed.",
+      "answers": {
+        "statesDecision": 0.95,
+        "decider": 0.95,
+        "date": 0.95,
+        "supersedes": 0.95,
+        "citesAdr": 0.95,
+        "citesMeeting": 0.95,
+        "noUnrelated": 0.95,
+        "noUnsupported": 0.6
+      }
+    },
+    {
+      "scenarioId": "decision-card",
+      "variant": "markdown",
+      "rubric_sha256": "3f7c7955c7e88a074f374889027b8897f51e0a8379b17a03a85f6a55b5fa2c93",
+      "evidence_sha256": "6c85f9c66c17e7a3cc02948bb5452b7d9ecced132670d3cdd932317cf7835086",
+      "note": "Source excerpts are not visible, so support for each claim cannot be confirmed.",
+      "answers": {
+        "statesDecision": 0.95,
+        "decider": 0.95,
+        "date": 0.95,
+        "supersedes": 0.95,
+        "citesAdr": 0.95,
+        "citesMeeting": 0.95,
+        "noUnrelated": 0.95,
+        "noUnsupported": 0.6
+      }
+    },
+    {
+      "scenarioId": "meeting-actions",
+      "variant": "a2ui",
+      "rubric_sha256": "844586b1410b77875fbef4c011deceee39391c37e086d662c4fc8e4b95444101",
+      "evidence_sha256": "d98c79b116985e2bab785f40c621b6dc9c3fc2215dd904d78913ba1e60e4fa26",
+      "note": "The transcript is not visible, so fidelity to it cannot be confirmed.",
+      "answers": {
+        "windowsAction": 0.95,
+        "rfiAction": 0.95,
+        "inspectionAction": 0.95,
+        "everyOwner": 0.95,
+        "unassigned": 0.95,
+        "noInvented": 0.6
+      }
+    },
+    {
+      "scenarioId": "meeting-actions",
+      "variant": "markdown",
+      "rubric_sha256": "844586b1410b77875fbef4c011deceee39391c37e086d662c4fc8e4b95444101",
+      "evidence_sha256": "aba324ff08165885db4c62f1dd30c42976fdad492f05e6afdd6539f9e554265f",
+      "note": "The transcript is not visible, so fidelity to it cannot be confirmed.",
+      "answers": {
+        "windowsAction": 0.95,
+        "rfiAction": 0.95,
+        "inspectionAction": 0.95,
+        "everyOwner": 0.95,
+        "unassigned": 0.95,
+        "noInvented": 0.6
+      }
+    }
+  ]
+}
