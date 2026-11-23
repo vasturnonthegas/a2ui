@@ -190,6 +190,39 @@ describe('runChecks', () => {
     assert.equal(trace(['Tom & Jerry\'s "A<B"'], 'Tom & Jerry\'s "A<B"')?.found, true);
   });
 
+  it('checks a Markdown table row as the cells the panel renders', () => {
+    const table = [
+      'Action items:',
+      '',
+      '| Item | Due |',
+      '| --- | --- |',
+      '| RFI-0142 | **Dec 4**, 2026 | RFI-0999 | 2026-02-30 |',
+      '| SUB-0031 | Roof sheathing |',
+    ];
+    const {ok, facts} = check(table, {
+      facts: {...FACTS, extra: 'RFI-0999', item: 'Roof sheathing'},
+    });
+
+    // Facts in rendered cells trace to their 1-based source lines.
+    assert.deepEqual(
+      facts.map(fact => [fact.key, fact.found, fact.lines, fact.components]),
+      [
+        ['rfiId', true, [5], ['c4']],
+        ['dueDate', true, [5], ['c4']],
+        ['extra', false, [], []],
+        ['item', true, [6], ['c5']],
+      ],
+    );
+    // Cells past the header's two columns are not rendered, so they are not checked.
+    assert.equal(ok('no-fabricated-ids'), true);
+    assert.equal(ok('dates-valid'), true);
+
+    // Pipes outside a real table stay ordinary text.
+    const prose = check(['RFI-0142 | Due 2026-12-04 | RFI-0999'], {facts: {extra: 'RFI-0999'}});
+    assert.equal(prose.facts[0]?.found, true);
+    assert.equal(prose.ok('no-fabricated-ids'), false);
+  });
+
   it('fails empty output', () => {
     const {ok, detail} = check([], {facts: {}});
     assert.equal(ok('non-empty'), false);

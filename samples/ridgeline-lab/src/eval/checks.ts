@@ -29,6 +29,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import {parseMarkdownTables} from './markdown-tables.ts';
 import type {CheckResult, FactTrace, Variant} from './types.ts';
 
 export interface EvidenceLineLike {
@@ -278,6 +279,32 @@ function visibleMarkdownLine(line: string): string {
   return html.replace(/&(?:amp|lt|gt|quot|#x27);/g, entity => HTML_TEXT_ESCAPES[entity] ?? entity);
 }
 
+/**
+ * The text each line of a GFM table shows in the Markdown panel, keyed by 0-based line index.
+ * The whole document is parsed at once, so table context comes from the panel's own parse.
+ * Each row line maps to its rendered cells joined by ` | `, so cells past the header's column
+ * count, which the panel drops, are not included. Delimiter rows and other lines inside a
+ * table map to empty text. Lines outside tables are absent.
+ */
+function markdownTableLines(lines: string[]): Map<number, string> {
+  const lineStarts: number[] = [];
+  let offset = 0;
+  for (const line of lines) {
+    lineStarts.push(offset);
+    offset += line.length + 1;
+  }
+  const lineAt = (position: number) => lineStarts.findLastIndex(start => start <= position);
+
+  const shown = new Map<number, string>();
+  for (const table of parseMarkdownTables(lines.join('\n'))) {
+    for (let index = lineAt(table.start); index <= lineAt(table.end); index++) {
+      shown.set(index, '');
+    }
+    for (const row of table.rows) shown.set(lineAt(row.start), row.cells.join(' | '));
+  }
+  return shown;
+}
+
 function lineHasValue(line: string, expected: string): boolean {
   if (NUMERIC_VALUE.test(expected.trim())) return lineHasNumber(line, expected);
   const haystack = normalize(line);
@@ -360,7 +387,17 @@ export function runChecks(input: CheckInput): CheckOutput {
   }
 
   const checks: CheckResult[] = [];
-  const visibleText = input.lines.map(line => line.text).join('\n');
+  // A GFM table line is checked as the cells the Markdown panel renders, never as its
+  // delimiter row or cells past the header's column count. Line indexes are unchanged.
+  const tableLines =
+    input.variant === 'markdown'
+      ? markdownTableLines(input.lines.map(line => line.text))
+      : new Map<number, string>();
+  const lines = input.lines.map((line, index) => {
+    const shown = tableLines.get(index);
+    return shown === undefined ? line : {...line, text: shown};
+  });
+  const visibleText = lines.map(line => line.text).join('\n');
 
   if (input.variant === 'a2ui') {
     checks.push(
@@ -381,9 +418,7 @@ export function runChecks(input: CheckInput): CheckOutput {
     );
   }
 
-  const visible = input.lines.filter(
-    line => line.text.trim() && !/^\[surface \d+\]$/.test(line.text),
-  );
+  const visible = lines.filter(line => line.text.trim() && !/^\[surface \d+\]$/.test(line.text));
   checks.push(
     result(
       'non-empty',
@@ -394,10 +429,13 @@ export function runChecks(input: CheckInput): CheckOutput {
 
   // Markdown evidence keeps its markup, so facts are matched against what each line shows.
   // The evidence itself is unchanged; only this comparison reads through the markup.
+  // Table lines already hold their rendered cell text.
   const factLines =
     input.variant === 'markdown'
-      ? input.lines.map(line => ({...line, text: visibleMarkdownLine(line.text)}))
-      : input.lines;
+      ? lines.map((line, index) =>
+          tableLines.has(index) ? line : {...line, text: visibleMarkdownLine(line.text)},
+        )
+      : lines;
   const factValues = new Set(Object.values(input.facts).map(value => value.trim()));
   const facts = Object.entries(input.facts).map(([key, expected]) =>
     traceFact(key, expected, factLines, factValues),

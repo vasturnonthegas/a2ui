@@ -153,6 +153,46 @@ describe('runEval', () => {
     assert.equal(report.totals.checks.failed, 1);
   });
 
+  it('keeps table cells the Markdown panel drops out of the evidence and checks', async () => {
+    // The pipe inside the broken link splits the cell, so the panel renders
+    // `[Read](https://example.com/a` and `b)` and drops `Never rendered`.
+    const markdown = [
+      '| Note | Fact |',
+      '| --- | --- |',
+      '| [Read](https://example.com/a|b) | Never rendered |',
+      '| PL-118 | East stair |',
+    ].join('\n');
+    const tableScenario: Scenario = {
+      ...scenario,
+      facts: {...scenario.facts, hidden: 'Never rendered'},
+      stub: {...scenario.stub, markdown},
+    };
+    const report = await runEval(options({scenarios: [tableScenario], variants: ['markdown']}));
+    const result = variantOf(only(report.scenarios), 'markdown');
+
+    assert.equal(
+      result.evidence,
+      [
+        '| Note | Fact |',
+        '| --- | --- |',
+        '| \\[Read\\]\\(https://example.com/a | b\\) |',
+        '| PL-118 | East stair |',
+      ].join('\n'),
+    );
+    assert.deepEqual(
+      result.facts.map(fact => [fact.key, fact.found, fact.lines]),
+      [
+        ['punchRef', true, [4]],
+        ['area', true, [4]],
+        ['hidden', false, []],
+      ],
+    );
+    assert.deepEqual(
+      result.checks.filter(check => !check.ok).map(check => [check.id, check.detail]),
+      [['facts-present', 'hidden "Never rendered" not visible']],
+    );
+  });
+
   it('grades offline only from canned fixtures recorded against the same evidence', async () => {
     const recorded = await runEval(
       options({judge: createJudge({mode: 'offline', fixtures: {grades: []}})}),

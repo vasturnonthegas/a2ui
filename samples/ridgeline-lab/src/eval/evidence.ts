@@ -24,6 +24,8 @@
  * the evidence text.
  */
 
+import {parseMarkdownTables} from './markdown-tables.ts';
+
 export const BASIC_CATALOG_ID = 'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json';
 
 const MAX_DEPTH = 64;
@@ -720,12 +722,41 @@ function boundContextPointers(action: unknown, base: string): string[] {
 }
 
 /**
+ * Escapes table cell text so it parses back as the same literal text, and so the link,
+ * image, comment, and tag rewrites in `renderMarkdownEvidence` cannot match it: Markdown
+ * punctuation gets a backslash and `<` becomes a character reference.
+ */
+function literalCell(text: string): string {
+  return text.replace(/[\\`*_~[\]()|!&]/g, '\\$&').replace(/</g, '&lt;');
+}
+
+/**
+ * Rewrites each GFM table row that has cells past the header's column count as a row of only
+ * the cells the Markdown panel renders, so dropped cells never reach the evidence. This runs
+ * on the raw answer because the later rewrites can remove a pipe inside link or HTML syntax,
+ * which would pull a dropped cell back into the table. The rewritten row stays on its line,
+ * and every other row and line is unchanged.
+ */
+function withoutDroppedCells(markdown: string): string {
+  const rows = parseMarkdownTables(markdown)
+    .flatMap(table => table.rows)
+    .filter(row => row.hasOverflow);
+  let text = markdown;
+  for (const row of rows.reverse()) {
+    const cells = row.cells.map(literalCell).join(' | ');
+    text = `${text.slice(0, row.start)}| ${cells} |${text.slice(row.end)}`;
+  }
+  return text;
+}
+
+/**
  * Returns the visible text of a Markdown answer. HTML comments and raw tags do not render,
  * so they are removed; link and image targets are dropped in favor of their visible labels.
+ * Table cells that the panel drops are removed first.
  */
 export function renderMarkdownEvidence(markdown: unknown): string {
   if (typeof markdown !== 'string') return '';
-  return markdown
+  return withoutDroppedCells(markdown)
     .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
     .replace(/<[^>\n]+>/g, '')
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_match: string, alt: string) =>
