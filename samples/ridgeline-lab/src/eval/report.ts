@@ -147,14 +147,10 @@ export function toMarkdown(report: EvalReport): string {
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
-function isErrno(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
-}
-
 /**
- * Writes `<name>.json` and `<name>.md` into `dir`. If the directory has no `.gitignore`,
- * one is added that ignores everything in it, so reports are not committed even when
- * `--out` points outside the lab's ignored `reports/` directory.
+ * Writes `<name>.json` and `<name>.md` into `dir` and touches nothing else there. The
+ * default `reports/` directory is ignored by the lab's tracked `.gitignore`; a custom
+ * `--out` directory keeps whatever ignore rules it already has.
  */
 export async function writeReports(
   report: EvalReport,
@@ -162,11 +158,6 @@ export async function writeReports(
   name: string,
 ): Promise<{jsonPath: string; markdownPath: string}> {
   await mkdir(dir, {recursive: true});
-  try {
-    await writeFile(join(dir, '.gitignore'), '*\n', {flag: 'wx'});
-  } catch (error) {
-    if (!isErrno(error, 'EEXIST')) throw error;
-  }
   const jsonPath = join(dir, `${name}.json`);
   const markdownPath = join(dir, `${name}.md`);
   await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);

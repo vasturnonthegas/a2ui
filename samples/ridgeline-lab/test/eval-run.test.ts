@@ -203,7 +203,7 @@ describe('runEval', () => {
     await assert.rejects(runEval(options({scenarioIds: ['nope']})), UnknownScenarioError);
   });
 
-  it('writes ignored JSON and Markdown reports without the API key', async () => {
+  it('writes JSON and Markdown reports without the API key', async () => {
     const answers = {shows_ref: 0.9, shows_area: 0.4, has_form: 0.9, has_send: 0.9};
     const fetch = (async () =>
       new Response(
@@ -231,12 +231,7 @@ describe('runEval', () => {
 
     const reports = join(dir, 'reports');
     const {jsonPath, markdownPath} = await writeReports(report, reports, 'eval-test');
-    assert.deepEqual((await readdir(reports)).sort(), [
-      '.gitignore',
-      'eval-test.json',
-      'eval-test.md',
-    ]);
-    assert.equal(await readFile(join(reports, '.gitignore'), 'utf8'), '*\n');
+    assert.deepEqual((await readdir(reports)).sort(), ['eval-test.json', 'eval-test.md']);
     const json = await readFile(jsonPath, 'utf8');
     const markdown = await readFile(markdownPath, 'utf8');
     assert.equal(json.includes(API_KEY), false);
@@ -249,10 +244,11 @@ describe('runEval', () => {
     assert.equal(markdown, toMarkdown(report));
   });
 
-  it('keeps an existing .gitignore in the output directory', async () => {
-    await writeFile(join(dir, '.gitignore'), 'custom\n');
+  it('adds no ignore rules to an existing --out directory', async () => {
+    await writeFile(join(dir, 'notes.txt'), 'keep\n');
     await writeReports(await runEval(options()), dir, 'eval-test');
-    assert.equal(await readFile(join(dir, '.gitignore'), 'utf8'), 'custom\n');
+    assert.deepEqual((await readdir(dir)).sort(), ['eval-test.json', 'eval-test.md', 'notes.txt']);
+    assert.equal(await readFile(join(dir, 'notes.txt'), 'utf8'), 'keep\n');
   });
 });
 
