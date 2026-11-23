@@ -179,6 +179,49 @@ describe('renderEvidence', () => {
     assert.equal(evidence.text, '');
   });
 
+  it('formats number precision the way the renderer does, flagging Intl range errors', () => {
+    const formatNumber = (decimals: unknown) => ({
+      '@call': 'formatNumber',
+      args: {value: 1234.5, decimals},
+    });
+    const evidence = renderEvidence([
+      surface(
+        [
+          {
+            id: 'root',
+            component: 'Column',
+            children: ['floored', 'max', 'negative', 'tooMany', 'bound', 'inline', 'after'],
+          },
+          {id: 'floored', component: 'Text', text: formatNumber(2.7)},
+          {id: 'max', component: 'Text', text: formatNumber(100)},
+          {id: 'negative', component: 'Text', text: formatNumber(-1)},
+          {id: 'tooMany', component: 'Text', text: formatNumber(101)},
+          {id: 'bound', component: 'Text', text: formatNumber({'@path': '/precision'})},
+          {
+            id: 'inline',
+            component: 'Text',
+            text: {
+              '@call': 'formatString',
+              args: {value: 'Total ${formatNumber(value: 5, decimals: 200)} units'},
+            },
+          },
+          {id: 'after', component: 'Text', text: 'Still rendered'},
+        ],
+        {precision: 101},
+      ),
+    ]);
+    assert.deepEqual(
+      evidence.lines.map(line => line.text),
+      ['  1,234.50', `  1,234.5${'0'.repeat(99)}`, '  Total  units', '  Still rendered'],
+    );
+    assert.deepEqual(evidence.diagnostics, [
+      'surface main/negative.text: formatNumber decimals -1 is outside 0 to 100, so the renderer shows no text',
+      'surface main/tooMany.text: formatNumber decimals 101 is outside 0 to 100, so the renderer shows no text',
+      'surface main/bound.text: formatNumber decimals 101 is outside 0 to 100, so the renderer shows no text',
+      'surface main/inline.text: formatNumber decimals 200 is outside 0 to 100, so the renderer shows no text',
+    ]);
+  });
+
   it('flags surfaces that do not use the Basic catalog', () => {
     const evidence = renderEvidence([
       {

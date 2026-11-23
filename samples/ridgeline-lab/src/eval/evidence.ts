@@ -146,7 +146,7 @@ function callFunction(call: JsonRecord, scope: Scope, where: string): unknown {
     case 'formatString':
       return interpolate(String(arg('value') ?? ''), scope, where);
     case 'formatNumber':
-      return formatNumber(arg('value'), arg('decimals'), arg('grouping'));
+      return formatNumber(arg('value'), arg('decimals'), arg('grouping'), scope, where);
     case 'formatCurrency':
       return formatCurrency(arg('value'), arg('currency'), arg('decimals'), arg('grouping'));
     case 'formatDate':
@@ -177,15 +177,34 @@ function toNumber(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function formatNumber(value: unknown, decimals: unknown, grouping: unknown): string {
+/**
+ * Mirrors web_core's formatNumber, which hands `decimals` to Intl unchanged. Intl floors a
+ * fractional precision and rejects one outside 0 to 100; the renderer reports that as an
+ * expression error and shows no text, so this records a diagnostic and returns empty text
+ * rather than letting one malformed call abort the whole report.
+ */
+function formatNumber(
+  value: unknown,
+  decimals: unknown,
+  grouping: unknown,
+  scope: Scope,
+  where: string,
+): string {
   const amount = toNumber(value);
   if (amount === undefined) return '';
   const digits = toNumber(decimals);
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-    useGrouping: grouping !== false,
-  }).format(amount);
+  try {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+      useGrouping: grouping !== false,
+    }).format(amount);
+  } catch {
+    scope.diagnostics.push(
+      `${where}: formatNumber decimals ${String(digits)} is outside 0 to 100, so the renderer shows no text`,
+    );
+    return '';
+  }
 }
 
 function formatCurrency(
