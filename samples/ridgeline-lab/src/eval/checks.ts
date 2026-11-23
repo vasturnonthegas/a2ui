@@ -207,15 +207,35 @@ function exactDate(value: string): string | null {
   return token.iso;
 }
 
+const NUMERIC_VALUE = /^[$€£]?[\d,]+(\.\d+)?$/;
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Whether `line` shows the number `expected` as a whole number, so `9` does not match
+ * `19`, `9.5`, `2029`, or the day in `Dec 9, 2026`. Thousands separators are optional on
+ * both sides; the currency symbol and decimals are matched literally.
+ */
+function lineHasNumber(line: string, expected: string): boolean {
+  const withoutDates = extractDates(line).reduce(
+    (text, token) => text.split(token.raw).join(' '),
+    line,
+  );
+  const stripSeparators = (text: string) => text.replace(/(\d),(?=\d)/g, '$1');
+  const haystack = stripSeparators(normalize(withoutDates));
+  const needle = stripSeparators(normalize(expected));
+  return new RegExp(`(?<![\\d.])${escapeRegExp(needle)}(?!\\d|\\.\\d)`).test(haystack);
+}
+
 function lineHasValue(line: string, expected: string): boolean {
+  if (NUMERIC_VALUE.test(expected.trim())) return lineHasNumber(line, expected);
   const haystack = normalize(line);
   const needle = normalize(expected);
   if (needle && haystack.includes(needle)) return true;
   const iso = exactDate(expected);
   if (iso) return extractDates(line).some(token => token.iso === iso);
-  if (/^[$€£]?[\d,]+(\.\d+)?$/.test(expected.trim())) {
-    return haystack.replace(/,/g, '').includes(needle.replace(/,/g, ''));
-  }
   return false;
 }
 

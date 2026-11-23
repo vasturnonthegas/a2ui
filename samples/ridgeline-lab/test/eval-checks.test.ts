@@ -127,6 +127,30 @@ describe('runChecks', () => {
     assert.equal(detail('facts-present'), 'rfiId "RFI-0142" not visible');
   });
 
+  it('matches numeric facts only as whole numbers', () => {
+    const found = (lines: string[], value: string) =>
+      check(lines, {facts: {value}}).facts[0]?.found;
+
+    assert.equal(found(['Crew on site: 9'], '9'), true);
+    assert.equal(found(['9 crew, 3 subs'], '9'), true);
+    assert.equal(found(['Crew on site: 19'], '9'), false);
+    assert.equal(found(['Crew on site: 91'], '9'), false);
+    assert.equal(found(['Crew on site: 9.5'], '9'), false);
+    assert.equal(found(['Crew on site: 0.9'], '9'), false);
+    assert.equal(found(['Target 2027-04-16', 'CO-007', 'RFI-037'], '7'), false);
+    assert.equal(found(['Walk Dec 7, 2026', 'Due 12/7/2026'], '7'), false);
+
+    assert.equal(found(['Threshold 5,000 rows'], '5,000'), true);
+    assert.equal(found(['Threshold 5000 rows'], '5,000'), true);
+    assert.equal(found(['Threshold 15,000 rows'], '5,000'), false);
+    assert.equal(found(['Threshold 5,000,000 rows'], '5,000'), false);
+
+    assert.equal(found(['Change order: $3,850.00.'], '$3,850.00'), true);
+    assert.equal(found(['Change order: $3850.00'], '$3,850.00'), true);
+    assert.equal(found(['Change order: $13,850.00'], '$3,850.00'), false);
+    assert.equal(found(['Change order: 3,850.00'], '$3,850.00'), false);
+  });
+
   it('fails empty output', () => {
     const {ok, detail} = check([], {facts: {}});
     assert.equal(ok('non-empty'), false);
