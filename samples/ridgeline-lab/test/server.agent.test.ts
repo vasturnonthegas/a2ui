@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
+import type {AddressInfo} from 'node:net';
 import {describe, it} from 'node:test';
 
 import {
@@ -11,6 +13,7 @@ import {
 import {FIREWORKS_MODEL} from '../src/llm.ts';
 import {BASIC_CATALOG_ID} from '../src/protocol.ts';
 import {findScenario, type Scenario} from '../src/scenarios.ts';
+import {createApiHandler} from '../src/server.ts';
 
 const scenario = findScenario('punch-proposal') as Scenario;
 const goodReply = JSON.stringify({
@@ -172,6 +175,63 @@ describe('punch-proposal prompt grounding', () => {
     assert.match(system, /"name": "proposePunch"/);
     assert.match(system, /context keys must be exactly title, description, priority/);
     assert.match(system, /nothing is saved until the user confirms/);
+  });
+});
+
+describe('daily-log prompt matches action dispatch', () => {
+  const dailyLog = findScenario('daily-log') as Scenario;
+
+  async function dispatchDraft(): Promise<{status: number; json: Record<string, unknown>}> {
+    const api = createApiHandler();
+    const server = createServer((req, res) => {
+      void api(req, res).then(handled => {
+        if (!handled) res.writeHead(404).end();
+      });
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/action`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            scenarioId: 'daily-log',
+            event: {
+              version: '1.0',
+              action: {
+                name: 'draftDailyLog',
+                surfaceId: 'daily-log',
+                sourceComponentId: 'draftButton',
+                timestamp: new Date().toISOString(),
+                context: {logDate: '2026-11-23', notes: 'Snow stopped work for an hour.'},
+              },
+            },
+          }),
+        },
+      );
+      return {status: response.status, json: (await response.json()) as Record<string, unknown>};
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  }
+
+  it('drafts immediately, so the Markdown rule never promises a confirmation', async () => {
+    const drafted = await dispatchDraft();
+    assert.equal(drafted.status, 200);
+    assert.equal(drafted.json.status, 'drafted');
+    assert.equal(drafted.json.action, undefined);
+
+    const system = buildSystemPrompt(dailyLog);
+    assert.match(system, /"name": "draftDailyLog"/);
+    assert.doesNotMatch(system, /until the user confirms/);
+    assert.match(system, /submit to draft\. Do not mention a confirmation step/);
+  });
+
+  it('keeps the confirm-once wording for the punch proposal', () => {
+    const system = buildSystemPrompt(scenario);
+    assert.match(system, /nothing is saved until the user confirms/);
+    assert.doesNotMatch(system, /Do not mention a confirmation step/);
   });
 });
 

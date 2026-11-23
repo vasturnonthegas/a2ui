@@ -7,7 +7,7 @@
  * output gets exactly one repair attempt.
  */
 
-import {actionsForScenario} from './actions.ts';
+import {actionsForScenario, type ActionSpec} from './actions.ts';
 import {
   complete,
   FIREWORKS_MODEL,
@@ -91,6 +91,13 @@ const EXAMPLE = {
   markdown: '## Open items\n\n- **A-1** First item\n- **A-2** Second item\n',
 };
 
+/** Describes what submitting the action does, matching how `/api/action` dispatches it. */
+function markdownActionRule(spec: ActionSpec): string {
+  return spec.kind === 'confirm'
+    ? '- In the Markdown answer, list the same prefilled values and say that nothing is saved until the user confirms.'
+    : '- In the Markdown answer, list the same prefilled values and tell the user to edit them, then submit to draft. Do not mention a confirmation step.';
+}
+
 export function buildSystemPrompt(scenario: Scenario): string {
   const actions = actionsForScenario(scenario.id);
   const actionRules =
@@ -106,7 +113,7 @@ export function buildSystemPrompt(scenario: Scenario): string {
               `  The context keys must be exactly ${spec.contextKeys.join(', ')}, each bound to the input that edits it. ` +
               `Prefill every input through dataModel. ${spec.promptHint}`,
           ),
-          '- In the Markdown answer, list the same prefilled values and say that nothing is saved until the user confirms.',
+          ...actions.map(spec => markdownActionRule(spec)),
         ].join('\n');
 
   return [
