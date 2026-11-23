@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
 
-import {generate, GenerationError, parseModelReply} from '../src/agent.ts';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  generate,
+  GenerationError,
+  parseModelReply,
+} from '../src/agent.ts';
 import {FIREWORKS_MODEL} from '../src/llm.ts';
 import {BASIC_CATALOG_ID} from '../src/protocol.ts';
 import {findScenario, type Scenario} from '../src/scenarios.ts';
@@ -139,6 +145,33 @@ describe('generate', () => {
     const {fetch, calls} = fakeFetch([reply, reply]);
     await assert.rejects(generate(scenario, 'live', {apiKey: 'k', fetch}), GenerationError);
     assert.equal(calls.length, 2);
+  });
+});
+
+describe('punch-proposal prompt grounding', () => {
+  it('shows the model every checked fact value verbatim', async () => {
+    const {fetch, calls} = fakeFetch([goodReply]);
+    await generate(scenario, 'live', {apiKey: 'k', fetch});
+    const userTurn = calls[0]?.body.messages[1]?.content ?? '';
+    assert.equal(userTurn, buildUserPrompt(scenario));
+    for (const [key, value] of Object.entries(scenario.facts)) {
+      assert.ok(userTurn.includes(value), `${key} "${value}" is not in the model prompt`);
+    }
+  });
+
+  it('marks the proposed punch item authoritative for both formats', () => {
+    const userTurn = buildUserPrompt(scenario);
+    assert.match(userTurn, /proposedPunchItem is authoritative/);
+    assert.match(userTurn, /both the UI and the Markdown/);
+    assert.match(userTurn, /exactly as written/);
+    assert.match(userTurn, /never say the punch item was created or saved/);
+  });
+
+  it('keeps the editable confirm action in the system prompt', () => {
+    const system = buildSystemPrompt(scenario);
+    assert.match(system, /"name": "proposePunch"/);
+    assert.match(system, /context keys must be exactly title, description, priority/);
+    assert.match(system, /nothing is saved until the user confirms/);
   });
 });
 

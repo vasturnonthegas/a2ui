@@ -425,7 +425,15 @@ const punchFixture = {
     author: 'Dana Whitfield',
     text: 'Stair landing: nail pops in the drywall along the outside wall, about six of them. Needs to be fixed before paint on 2026-12-01.',
   },
-  nextPunchNumber: 18,
+  // Authoritative values for the draft. The model must show these verbatim rather than
+  // deriving its own number, title, or location from the walkthrough note.
+  proposedPunchItem: {
+    id: 'PI-018',
+    title: 'Drywall nail pops at stair landing',
+    location: 'Stair landing, outside wall',
+    neededBy: '2026-12-01',
+    defaultPriority: 'medium',
+  },
   existingPunchItems: [
     {
       id: 'PI-015',
@@ -459,16 +467,19 @@ const punchProposal: Scenario = {
   description:
     'Turn a walkthrough note into an editable punch item draft that the user reviews before submitting.',
   prompt:
-    'From walkthrough note WALK-0219, propose a new punch item for Aspen Hollow Lot 12. Prefill an editable title, description, and priority (low, medium, or high), and let the user submit it with a Propose button. Nothing is saved until the user confirms.',
+    'From walkthrough note WALK-0219, propose a new punch item for Aspen Hollow Lot 12. Prefill an editable title, description, and priority (low, medium, or high), and let the user submit it with a Propose button. ' +
+    'The fixture field proposedPunchItem is authoritative: in both the UI and the Markdown, show its id, title, location, and neededBy exactly as written, character for character, without paraphrasing. ' +
+    'Prefill the title input with that exact title, start the description with that exact location, and preselect its defaultPriority. ' +
+    'Nothing is saved until the user confirms, so never say the punch item was created or saved.',
   fixture: punchFixture,
   facts: {
-    project: 'Aspen Hollow Lot 12',
-    sourceNote: 'WALK-0219',
-    proposedNumber: 'PI-018',
-    title: 'Drywall nail pops at stair landing',
-    location: 'Stair landing, outside wall',
-    neededBy: '2026-12-01',
-    priority: 'medium',
+    project: PROJECT.name,
+    sourceNote: punchFixture.walkthroughNote.id,
+    proposedNumber: punchFixture.proposedPunchItem.id,
+    title: punchFixture.proposedPunchItem.title,
+    location: punchFixture.proposedPunchItem.location,
+    neededBy: punchFixture.proposedPunchItem.neededBy,
+    priority: punchFixture.proposedPunchItem.defaultPriority,
   },
   rubric: {
     id: 'ridgeline-punch-proposal-v1',
